@@ -63,7 +63,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .dm{font-size:15px;margin-bottom:20px;line-height:1.5}
 .dbb{display:flex;gap:8px}.dbb button{flex:1;padding:11px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer}
 .dc{background:#f1f3f4;color:#1f1f1f}.dok{background:#ea4335;color:#fff}
-.toast{position:fixed;bottom:calc(120px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(80px);background:#323232;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:400;transition:transform .25s ease;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(80px);background:#323232;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:400;transition:transform .25s ease;pointer-events:none;white-space:nowrap}
 .toast.vis{transform:translateX(-50%) translateY(0)}
 .empty{text-align:center;padding:40px 20px;color:#9aa0a6}.empty i{font-size:40px;opacity:.4;margin-bottom:10px}.empty p{font-size:13px}
 .hi{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f3f4;font-size:13px}
@@ -495,18 +495,18 @@ function fbUpdateBadge(){
 }
 
 function fbAutoConnect(){
-  var cfg=JSON.parse(sG('hi_fb')||'{}');
-  if(cfg.room&&cfg.apiKey&&cfg.dbUrl){
-    setTimeout(function(){
-      var r=document.getElementById('fbRoom');
-      var k=document.getElementById('fbKey');
-      var u=document.getElementById('fbUrl');
-      if(r)r.value=cfg.room;
-      if(k)k.value=cfg.apiKey;
-      if(u)u.value=cfg.dbUrl;
-      fbLoadSDK(function(){fbDoConnect(cfg.room,cfg.apiKey,cfg.dbUrl)});
-    },500);
-  }
+  var room='tksm0321';
+  var apiKey='AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o';
+  var dbUrl='https://ouchi-inventory-default-rtdb.firebaseio.com';
+  setTimeout(function(){
+    var r=document.getElementById('fbRoom');
+    var k=document.getElementById('fbKey');
+    var u=document.getElementById('fbUrl');
+    if(r)r.value=room;
+    if(k)k.value=apiKey;
+    if(u)u.value=dbUrl;
+    fbLoadSDK(function(){fbDoConnect(room,apiKey,dbUrl)});
+  },500);
 }
 
 
