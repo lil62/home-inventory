@@ -1,6 +1,6 @@
 // Service Worker - おうち在庫管理 PWA
-const CACHE_NAME = 'hinv-v1';
-const ASSETS = [
+var CACHE_NAME = 'hinv-v2';
+var ASSETS = [
   './',
   './index.html',
   './manifest.json',
