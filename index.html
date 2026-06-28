@@ -7,8 +7,6 @@
 <meta name="theme-color" content="#1a73e8">
 <title>おうち在庫管理</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -394,6 +392,20 @@ function fbUpdateBadge(){
 }
 
 // Connect to Firebase
+function fbLoadSDK(cb){
+  if(typeof firebase!=='undefined'){cb();return}
+  var s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+  s1.onload=function(){
+    var s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
+    s2.onload=cb;
+    s2.onerror=function(){toast('Firebase SDK読み込み失敗');};
+    document.head.appendChild(s2);
+  };
+  s1.onerror=function(){toast('Firebase SDK読み込み失敗');};
+  document.head.appendChild(s1);
+}
 function fbConnect(){
   var room=document.getElementById('fbRoom').value.trim();
   var apiKey=document.getElementById('fbKey').value.trim();
@@ -410,6 +422,7 @@ function fbConnect(){
     if(fbApp){
       try{fbApp.delete()}catch(e){}
     }
+    if(typeof firebase==="undefined"){toast("Firebase SDK読み込み中...");fbLoadSDK(function(){fbConnect()});return}
     fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},'hinv_'+Date.now());
     fbDb=firebase.database(fbApp);
     fbRef=fbDb.ref(room);
