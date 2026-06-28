@@ -82,8 +82,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .fb-disconnected{background:#f1f3f4;color:#9aa0a6}
 @media(min-width:600px){.sg{grid-template-columns:repeat(4,1fr)}}
 
-.dbg-log{position:fixed;top:60px;left:8px;right:8px;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;font-family:monospace;padding:8px;border-radius:8px;z-index:9999;display:block;pointer-events:auto;white-space:pre-wrap;word-break:break-all}
-.dbg-close{position:absolute;top:4px;right:8px;color:#fff;font-size:14px;cursor:pointer}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -391,16 +389,6 @@ R();
 
 // ===== Firebase Sync =====
 var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
-var dbgLines=[];
-function dbg(msg){
-  var t=new Date();
-  var ts=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
-  var line='['+ts+'] '+msg;
-  dbgLines.push(line);
-  if(dbgLines.length>30)dbgLines.shift();
-  var el=document.getElementById('dbgLog');
-  if(el){el.textContent=dbgLines.join('\n');el.scrollTop=el.scrollHeight}
-}
 
 function fbUpdateBadge(){
   var el=document.getElementById('syncBadge');
@@ -433,23 +421,18 @@ function fbConnect(){
 }
 
 function fbDoConnect(room,apiKey,dbUrl){
-  dbg('fbDoConnect called');
   try{
     if(typeof firebase==='undefined'){
-      dbg('ERROR: firebase is undefined!');
       return;
     }
-    dbg('firebase exists, version: '+(firebase.SDK_VERSION||'?'));
+    );
     if(fbRef){try{fbRef.off()}catch(e){}}
-    if(fbApp){try{fbApp.delete()}catch(e){dbg('app.delete err: '+e.message)}}
+    if(fbApp){try{fbApp.delete()}catch(e){}}
     var appName='hinv'+Date.now();
-    dbg('initializeApp: '+appName);
     fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},appName);
     fbDb=firebase.database(fbApp);
     fbRef=fbDb.ref(room);
-    dbg('ref.on(value) registering...');
     fbRef.on('value',function(snap){
-      dbg('value event received, syncing='+fbSyncing);
       if(fbSyncing)return;
       var remote=snap.val();
       if(remote&&remote.items){
@@ -457,22 +440,17 @@ function fbDoConnect(room,apiKey,dbUrl){
         D.hist=remote.hist||[];
         sS('hi_d',JSON.stringify(D));
         R();
-        dbg('synced '+D.items.length+' items from remote');
       }else{
-        dbg('remote empty or no items');
       }
     },function(err){
-      dbg('ref.on ERROR: '+err.message);
       fbConnected=false;
       fbUpdateBadge();
     });
     fbConnected=true;
     fbSyncing=false;
     fbUpdateBadge();
-    dbg('connected! pushing local data...');
     fbPush();
   }catch(e){
-    dbg('CATCH error: '+e.message);
     fbConnected=false;
     fbUpdateBadge();
   }
@@ -483,7 +461,7 @@ function fbPush(){
   fbSyncing=true;
   fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(err){
     fbSyncing=false;
-    if(err){dbg('push error: '+err.message)}else{dbg('push ok')}
+    
   });
 }
 
@@ -496,7 +474,6 @@ function fbDisconnect(){
 }
 
 function fbReconnect(){
-  dbg('fbReconnect called');
   fbConnected=false;
   if(fbRef){try{fbRef.off()}catch(e){}}
   if(fbApp){try{fbApp.delete()}catch(e){}}
@@ -505,8 +482,7 @@ function fbReconnect(){
 }
 
 function fbAutoConnect(){
-  dbg('fbAutoConnect called');
-  dbg('firebase defined: '+(typeof firebase!=='undefined'));
+  );
   fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
 }
 
@@ -525,32 +501,26 @@ function forceUpdate(){
 try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()})})}}catch(e){}
 
 // Initial connect
-dbg('=== page load ===');
-dbg('document.readyState: '+document.readyState);
 fbAutoConnect();
 
 // iOS PWA resume
 document.addEventListener('visibilitychange',function(){
-  dbg('visibilitychange: '+document.visibilityState);
   if(document.visibilityState==='visible'){fbReconnect()}
 });
 window.addEventListener('pageshow',function(e){
-  dbg('pageshow, persisted='+e.persisted);
   if(e.persisted){fbReconnect()}
 });
 // Keepalive every 30s
 setInterval(function(){
-  if(!fbRef||!fbDb){dbg('keepalive: no ref/db');return}
+  if(!fbRef||!fbDb){return}
   try{
     fbDb.ref('.info/connected').once('value',function(snap){
       var val=snap.val();
-      dbg('keepalive: .info/connected='+val);
       if(!val&&fbConnected){fbReconnect()}
     });
-  }catch(e){dbg('keepalive err: '+e.message);fbReconnect()}
+  }catch(e){fbReconnect()}
 },30000);
 
 </script>
-<div class="dbg-log" id="dbgLog"><span class="dbg-close" onclick="document.getElementById('dbgLog').style.display='none'">&times;</span>DEBUG LOG\n</div>
 </body>
 </html>
