@@ -17,8 +17,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .sync-on{background:#34a853;color:#fff}
 .sync-off{background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.8)}
 .main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + max(20px, env(safe-area-inset-bottom,0px)))}
-.bnav{position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #dadce0;display:flex;padding-bottom:max(28px, env(safe-area-inset-bottom,0px));z-index:100}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 4px 5px;border:none;background:none;font-size:10px;color:#9aa0a6;cursor:pointer;gap:2px}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #dadce0;display:flex;padding-bottom:max(34px, env(safe-area-inset-bottom,0px));z-index:100}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 4px;border:none;background:none;font-size:10px;color:#9aa0a6;cursor:pointer;gap:2px}
 .nb i{font-size:20px}.nb.on{color:#1a73e8}
 .pn{display:none;padding:16px}.pn.on{display:block}
 .card{background:#ffffff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(60,64,67,.12)}
@@ -497,13 +497,15 @@ function fbUpdateBadge(){
 function fbAutoConnect(){
   var cfg=JSON.parse(sG('hi_fb')||'{}');
   if(cfg.room&&cfg.apiKey&&cfg.dbUrl){
-    var r=document.getElementById('fbRoom');
-    var k=document.getElementById('fbKey');
-    var u=document.getElementById('fbUrl');
-    if(r)r.value=cfg.room;
-    if(k)k.value=cfg.apiKey;
-    if(u)u.value=cfg.dbUrl;
-    fbLoadSDK(function(){fbDoConnect(cfg.room,cfg.apiKey,cfg.dbUrl)});
+    setTimeout(function(){
+      var r=document.getElementById('fbRoom');
+      var k=document.getElementById('fbKey');
+      var u=document.getElementById('fbUrl');
+      if(r)r.value=cfg.room;
+      if(k)k.value=cfg.apiKey;
+      if(u)u.value=cfg.dbUrl;
+      fbLoadSDK(function(){fbDoConnect(cfg.room,cfg.apiKey,cfg.dbUrl)});
+    },500);
   }
 }
 
@@ -520,7 +522,7 @@ function forceUpdate(){
   toast('更新完了！アプリを閉じて開き直してください');
 }
 
-try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()});});navigator.serviceWorker.register('./sw.js?v=3').catch(function(){});}}catch(e){}
+try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()})})}}catch(e){}
 
 
 
