@@ -627,12 +627,18 @@ var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
 function fbUpdateBadge(){
   var el=document.getElementById('syncBadge');
   if(!el)return;
+  var statusEl=document.getElementById('fbStatus');
+  var statusText=document.getElementById('fbStatusText');
   if(fbConnected){
     el.className='sync-badge sync-on';
-    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u540c\u671f\u4e2d';
+    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> 同期中';
+    if(statusEl){statusEl.className='fb-status fb-connected'}
+    if(statusText){statusText.textContent='接続中 — リアルタイム同期有効'}
   }else{
     el.className='sync-badge sync-off';
-    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u30ed\u30fc\u30ab\u30eb';
+    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> ローカル';
+    if(statusEl){statusEl.className='fb-status fb-disconnected'}
+    if(statusText){statusText.textContent='未接続'}
   }
 }
 function fbLoadForm(){
