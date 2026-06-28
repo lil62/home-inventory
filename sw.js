@@ -1,14 +1,8 @@
-// Service Worker - おうち在庫管理 PWA
-var CACHE_NAME = 'hinv-v2';
-var ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
-];
+// Service Worker - おうち在庫管理 v3
+var CACHE_NAME = 'hinv-v3';
+var ASSETS = ['./index.html','./manifest.json'];
 
 self.addEventListener('install', function(e) {
-  e.waitUntil(caches.open(CACHE_NAME).then(function(c) { return c.addAll(ASSETS); }));
   self.skipWaiting();
 });
 
@@ -19,6 +13,15 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
+// Network first, cache fallback
 self.addEventListener('fetch', function(e) {
-  e.respondWith(caches.match(e.request).then(function(r) { return r || fetch(e.request); }));
+  e.respondWith(
+    fetch(e.request).then(function(res) {
+      var clone = res.clone();
+      caches.open(CACHE_NAME).then(function(c) { c.put(e.request, clone); });
+      return res;
+    }).catch(function() {
+      return caches.match(e.request);
+    })
+  );
 });
