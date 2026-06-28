@@ -125,6 +125,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 <div class="card"><div class="ct"><i class="fa-solid fa-clock-rotate-left"></i> 履歴</div><div id="hList"></div></div>
 </div>
 <div class="pn" id="p-set">
+<div class="card"><div class="ct"><i class="fa-solid fa-cloud"></i> Firebase接続</div>
+<div id="syncBadge" style="font-size:12px;margin-bottom:10px;color:#9aa0a6">● ローカル</div>
+<div class="fg"><label class="fl">共有キー（合言葉）</label><input class="fi" id="fbRoom" placeholder="例: takishima-home"></div>
+<div class="fg"><label class="fl">Firebase apiKey</label><input class="fi" id="fbKey" placeholder="AIzaSy..."></div>
+<div class="fg"><label class="fl">Firebase databaseURL</label><input class="fi" id="fbUrl" placeholder="https://xxx.firebaseio.com"></div>
+<div style="display:flex;gap:8px"><button class="btn bp" style="flex:1" onclick="fbConnect()"><i class="fa-solid fa-link"></i> 接続</button><button class="btn bs" style="flex:1" onclick="fbDisconnect()"><i class="fa-solid fa-link-slash"></i> 切断</button></div>
+<p style="font-size:11px;color:#9aa0a6;margin-top:10px">Firebase Console → プロジェクト作成 → Realtime Database有効化 → apiKeyとdatabaseURLを入力</p>
+</div>
 <div class="card"><div class="ct"><i class="fa-solid fa-cloud"></i> Firebase接続（リアルタイム同期）</div>
 <div class="fb-status fb-disconnected" id="fbStatus"><i class="fa-solid fa-circle" style="font-size:8px"></i> <span id="fbStatusText">未接続</span></div>
 <div class="fg"><label class="fl">共有キー（合言葉）</label><input class="fi" id="fbRoom" placeholder="例: tanaka-family-2024"></div>
@@ -188,7 +196,7 @@ function sS(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 // State
 var D=JSON.parse(sG('hi_d')||'{"items":[],"hist":[]}');
 var ac='\u3059\u3079\u3066';
-function sv(){sS('hi_d',JSON.stringify(D));}
+function sv(){sS('hi_d',JSON.stringify(D));fbPush()}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 
 // Categories
@@ -398,6 +406,95 @@ if(!D.items.length){
 }
 R();
 // Service Worker
+
+// ===== Firebase Sync =====
+var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
+
+function fbLoadSDK(cb){
+  if(typeof firebase!=='undefined'){cb();return}
+  var s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+  s1.onload=function(){
+    var s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
+    s2.onload=cb;
+    s2.onerror=function(){toast('Firebase SDK読み込み失敗')};
+    document.head.appendChild(s2);
+  };
+  s1.onerror=function(){toast('ネットワークエラー')};
+  document.head.appendChild(s1);
+}
+
+function fbConnect(){
+  var room=document.getElementById('fbRoom').value.trim();
+  var apiKey=document.getElementById('fbKey').value.trim();
+  var dbUrl=document.getElementById('fbUrl').value.trim();
+  if(!room||!apiKey||!dbUrl){toast('全項目入力してください');return}
+  sS('hi_fb',JSON.stringify({room:room,apiKey:apiKey,dbUrl:dbUrl}));
+  toast('接続中...');
+  fbLoadSDK(function(){fbDoConnect(room,apiKey,dbUrl)});
+}
+
+function fbDoConnect(room,apiKey,dbUrl){
+  try{
+    if(fbApp){try{fbApp.delete()}catch(e){}}
+    fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},'hinv'+Date.now());
+    fbDb=firebase.database(fbApp);
+    fbRef=fbDb.ref(room);
+    fbRef.on('value',function(snap){
+      if(fbSyncing)return;
+      var remote=snap.val();
+      if(remote&&remote.items){
+        D.items=remote.items;
+        D.hist=remote.hist||[];
+        sS('hi_d',JSON.stringify(D));
+        R();
+      }
+    });
+    fbConnected=true;
+    fbSyncing=false;
+    fbUpdateBadge();
+    toast('Firebase接続完了');
+    fbPush();
+  }catch(e){
+    toast('接続エラー: '+e.message);
+    fbConnected=false;
+    fbUpdateBadge();
+  }
+}
+
+function fbPush(){
+  if(!fbConnected||!fbRef||fbSyncing)return;
+  fbSyncing=true;
+  fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(){fbSyncing=false});
+}
+
+function fbDisconnect(){
+  if(fbRef){fbRef.off()}
+  if(fbApp){try{fbApp.delete()}catch(e){}}
+  fbApp=null;fbDb=null;fbRef=null;fbConnected=false;
+  fbUpdateBadge();
+  toast('切断しました');
+}
+
+function fbUpdateBadge(){
+  var el=document.getElementById('syncBadge');
+  if(el){el.textContent=fbConnected?'● 同期中':'● ローカル';el.style.color=fbConnected?'#34a853':'rgba(255,255,255,0.7)'}
+}
+
+function fbAutoConnect(){
+  var cfg=JSON.parse(sG('hi_fb')||'{}');
+  if(cfg.room&&cfg.apiKey&&cfg.dbUrl){
+    var r=document.getElementById('fbRoom');
+    var k=document.getElementById('fbKey');
+    var u=document.getElementById('fbUrl');
+    if(r)r.value=cfg.room;
+    if(k)k.value=cfg.apiKey;
+    if(u)u.value=cfg.dbUrl;
+    fbLoadSDK(function(){fbDoConnect(cfg.room,cfg.apiKey,cfg.dbUrl)});
+  }
+}
+
 try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()});});navigator.serviceWorker.register('./sw.js?v=3').catch(function(){});}}catch(e){}
 
 
