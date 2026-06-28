@@ -425,7 +425,6 @@ function fbDoConnect(room,apiKey,dbUrl){
     if(typeof firebase==='undefined'){
       return;
     }
-    );
     if(fbRef){try{fbRef.off()}catch(e){}}
     if(fbApp){try{fbApp.delete()}catch(e){}}
     var appName='hinv'+Date.now();
@@ -482,7 +481,6 @@ function fbReconnect(){
 }
 
 function fbAutoConnect(){
-  );
   fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
 }
 
