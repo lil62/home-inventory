@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a73e8">
 <title>おうち在庫管理</title>
@@ -16,8 +16,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .sync-badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:500;display:flex;align-items:center;gap:4px}
 .sync-on{background:#34a853;color:#fff}
 .sync-off{background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.8)}
-.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + max(20px, env(safe-area-inset-bottom,0px)))}
-.bnav{position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #dadce0;display:flex;padding-bottom:max(34px, env(safe-area-inset-bottom,0px));z-index:100}
+.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #dadce0;display:flex;padding-bottom:40px;z-index:100}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 4px;border:none;background:none;font-size:10px;color:#9aa0a6;cursor:pointer;gap:2px}
 .nb i{font-size:20px}.nb.on{color:#1a73e8}
 .pn{display:none;padding:16px}.pn.on{display:block}
