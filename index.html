@@ -83,7 +83,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 @media(min-width:600px){.sg{grid-template-columns:repeat(4,1fr)}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" onload="setTimeout(function(){if(typeof fbAutoConnect==='function')fbAutoConnect()},1000)"></script>
 </head>
 <body>
 <header class="hd"><h1>🏠 おうち在庫管理</h1><span class="sync-badge sync-off" id="syncBadge"><i class="fa-solid fa-circle" style="font-size:6px"></i> ローカル</span></header>
@@ -513,6 +513,8 @@ try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().
 
 
 
+
+setTimeout(function(){if(typeof firebase!=='undefined'&&!fbConnected&&typeof fbAutoConnect==='function')fbAutoConnect()},3000);
 </script>
 </body>
 </html>
