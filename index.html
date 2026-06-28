@@ -81,6 +81,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .fb-connected{background:#e6f4ea;color:#1e8e3e}
 .fb-disconnected{background:#f1f3f4;color:#9aa0a6}
 @media(min-width:600px){.sg{grid-template-columns:repeat(4,1fr)}}
+
+.dbg-log{position:fixed;top:60px;left:8px;right:8px;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;font-family:monospace;padding:8px;border-radius:8px;z-index:9999;display:block;pointer-events:auto;white-space:pre-wrap;word-break:break-all}
+.dbg-close{position:absolute;top:4px;right:8px;color:#fff;font-size:14px;cursor:pointer}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -378,41 +381,6 @@ function toast(m){var el=document.getElementById('tst');el.textContent=m;el.styl
 // ============================================
 // Firebase Realtime Database Sync
 // ============================================
-var fbApp=null;
-var fbDb=null;
-var fbRef=null;
-var fbConnected=false;
-var fbSyncing=false;
-
-// Load saved Firebase config into form
-function fbLoadForm(){
-  var cfg=JSON.parse(sG('hi_fb_cfg')||'{}');
-  var roomEl=document.getElementById('fbRoom');
-  var keyEl=document.getElementById('fbKey');
-  var urlEl=document.getElementById('fbUrl');
-  if(cfg.room&&roomEl)roomEl.value=cfg.room;
-  if(cfg.apiKey&&keyEl)keyEl.value=cfg.apiKey;
-  if(cfg.dbUrl&&urlEl)urlEl.value=cfg.dbUrl;
-}
-
-// Update sync badge in header
-function fbUpdateBadge(){
-  var badge=document.getElementById('syncBadge');
-  var statusEl=document.getElementById('fbStatus');
-  var statusText=document.getElementById('fbStatusText');
-  if(fbConnected){
-    badge.className='sync-badge sync-on';
-    badge.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u540c\u671f\u4e2d';
-    statusEl.className='fb-status fb-connected';
-    statusText.textContent='\u63a5\u7d9a\u4e2d \u2014 \u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u540c\u671f\u6709\u52b9';
-  }else{
-    badge.className='sync-badge sync-off';
-    badge.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u30ed\u30fc\u30ab\u30eb';
-    statusEl.className='fb-status fb-disconnected';
-    statusText.textContent='\u672a\u63a5\u7d9a';
-  }
-}
-
 
 if(!D.items.length){
   [{name:'\u725b\u4e73',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u672c',pr:198,al:1,cy:4,me:''},{name:'\u5375 10\u500b\u30d1\u30c3\u30af',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u30d1\u30c3\u30af',pr:298,al:1,cy:7,me:''},{name:'\u30c8\u30a4\u30ec\u30c3\u30c8\u30da\u30fc\u30d1\u30fc',cat:'\u30c8\u30a4\u30ec',qty:8,un:'\u30ed\u30fc\u30eb',pr:498,al:3,cy:14,me:'\u30c0\u30d6\u30eb'},{name:'\u98df\u5668\u7528\u6d17\u5264',cat:'\u30ad\u30c3\u30c1\u30f3',qty:1,un:'\u672c',pr:178,al:1,cy:30,me:'\u30ad\u30e5\u30ad\u30e5\u30c3\u30c8'},{name:'\u30b7\u30e3\u30f3\u30d7\u30fc',cat:'\u6d17\u9762\u6240',qty:1,un:'\u672c',pr:548,al:1,cy:45,me:''},{name:'\u30e9\u30c3\u30d7 30cm',cat:'\u30ad\u30c3\u30c1\u30f3',qty:2,un:'\u672c',pr:148,al:1,cy:30,me:'\u30b5\u30e9\u30f3\u30e9\u30c3\u30d7'}].forEach(function(s){D.items.push({id:uid(),name:s.name,cat:s.cat,qty:s.qty,un:s.un,pr:s.pr,al:s.al,cy:s.cy,me:s.me,cr:new Date().toISOString(),up:Date.now()})});
@@ -423,26 +391,65 @@ R();
 
 // ===== Firebase Sync =====
 var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
+var dbgLines=[];
+function dbg(msg){
+  var t=new Date();
+  var ts=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
+  var line='['+ts+'] '+msg;
+  dbgLines.push(line);
+  if(dbgLines.length>30)dbgLines.shift();
+  var el=document.getElementById('dbgLog');
+  if(el){el.textContent=dbgLines.join('\n');el.scrollTop=el.scrollHeight}
+}
 
-function fbLoadSDK(cb){cb()}
+function fbUpdateBadge(){
+  var el=document.getElementById('syncBadge');
+  if(!el)return;
+  if(fbConnected){
+    el.className='sync-badge sync-on';
+    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u540c\u671f\u4e2d';
+  }else{
+    el.className='sync-badge sync-off';
+    el.innerHTML='<i class="fa-solid fa-circle" style="font-size:6px"></i> \u30ed\u30fc\u30ab\u30eb';
+  }
+}
+
+function fbLoadForm(){
+  var roomEl=document.getElementById('fbRoom');
+  var keyEl=document.getElementById('fbKey');
+  var urlEl=document.getElementById('fbUrl');
+  if(roomEl)roomEl.value='tksm0321';
+  if(keyEl)keyEl.value='AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o';
+  if(urlEl)urlEl.value='https://ouchi-inventory-default-rtdb.firebaseio.com';
+}
 
 function fbConnect(){
   var room=document.getElementById('fbRoom').value.trim();
   var apiKey=document.getElementById('fbKey').value.trim();
   var dbUrl=document.getElementById('fbUrl').value.trim();
-  if(!room||!apiKey||!dbUrl){toast('全項目入力してください');return}
-  sS('hi_fb',JSON.stringify({room:room,apiKey:apiKey,dbUrl:dbUrl}));
-  toast('接続中...');
-  fbLoadSDK(function(){fbDoConnect(room,apiKey,dbUrl)});
+  if(!room||!apiKey||!dbUrl){toast('\u5168\u9805\u76ee\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
+  toast('\u63a5\u7d9a\u4e2d...');
+  fbDoConnect(room,apiKey,dbUrl);
 }
 
 function fbDoConnect(room,apiKey,dbUrl){
+  dbg('fbDoConnect called');
   try{
-    if(fbApp){try{fbApp.delete()}catch(e){}}
-    fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},'hinv'+Date.now());
+    if(typeof firebase==='undefined'){
+      dbg('ERROR: firebase is undefined!');
+      return;
+    }
+    dbg('firebase exists, version: '+(firebase.SDK_VERSION||'?'));
+    if(fbRef){try{fbRef.off()}catch(e){}}
+    if(fbApp){try{fbApp.delete()}catch(e){dbg('app.delete err: '+e.message)}}
+    var appName='hinv'+Date.now();
+    dbg('initializeApp: '+appName);
+    fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},appName);
     fbDb=firebase.database(fbApp);
     fbRef=fbDb.ref(room);
+    dbg('ref.on(value) registering...');
     fbRef.on('value',function(snap){
+      dbg('value event received, syncing='+fbSyncing);
       if(fbSyncing)return;
       var remote=snap.val();
       if(remote&&remote.items){
@@ -450,15 +457,22 @@ function fbDoConnect(room,apiKey,dbUrl){
         D.hist=remote.hist||[];
         sS('hi_d',JSON.stringify(D));
         R();
+        dbg('synced '+D.items.length+' items from remote');
+      }else{
+        dbg('remote empty or no items');
       }
+    },function(err){
+      dbg('ref.on ERROR: '+err.message);
+      fbConnected=false;
+      fbUpdateBadge();
     });
     fbConnected=true;
     fbSyncing=false;
     fbUpdateBadge();
-    toast('Firebase接続完了');
+    dbg('connected! pushing local data...');
     fbPush();
   }catch(e){
-    toast('接続エラー: '+e.message);
+    dbg('CATCH error: '+e.message);
     fbConnected=false;
     fbUpdateBadge();
   }
@@ -467,26 +481,34 @@ function fbDoConnect(room,apiKey,dbUrl){
 function fbPush(){
   if(!fbConnected||!fbRef||fbSyncing)return;
   fbSyncing=true;
-  fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(){fbSyncing=false});
+  fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(err){
+    fbSyncing=false;
+    if(err){dbg('push error: '+err.message)}else{dbg('push ok')}
+  });
 }
 
 function fbDisconnect(){
-  if(fbRef){fbRef.off()}
+  if(fbRef){try{fbRef.off()}catch(e){}}
   if(fbApp){try{fbApp.delete()}catch(e){}}
   fbApp=null;fbDb=null;fbRef=null;fbConnected=false;
   fbUpdateBadge();
-  toast('切断しました');
+  toast('\u5207\u65ad\u3057\u307e\u3057\u305f');
 }
 
-function fbUpdateBadge(){
-  var el=document.getElementById('syncBadge');
-  if(el){el.textContent=fbConnected?'● 同期中':'● 接続中...';el.style.color=fbConnected?'#34a853':'#9aa0a6'}
-}
-
-function fbAutoConnect(){
+function fbReconnect(){
+  dbg('fbReconnect called');
+  fbConnected=false;
+  if(fbRef){try{fbRef.off()}catch(e){}}
+  if(fbApp){try{fbApp.delete()}catch(e){}}
+  fbApp=null;fbDb=null;fbRef=null;
   fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
 }
 
+function fbAutoConnect(){
+  dbg('fbAutoConnect called');
+  dbg('firebase defined: '+(typeof firebase!=='undefined'));
+  fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
+}
 
 function forceUpdate(){
   if('serviceWorker' in navigator){
@@ -497,25 +519,38 @@ function forceUpdate(){
   if('caches' in window){
     caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k)})});
   }
-  toast('更新完了！アプリを閉じて開き直してください');
+  toast('\u66f4\u65b0\u5b8c\u4e86\uff01');
 }
 
 try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()})})}}catch(e){}
 
-
-
+// Initial connect
+dbg('=== page load ===');
+dbg('document.readyState: '+document.readyState);
 fbAutoConnect();
 
-// iOS PWA resume: reconnect Firebase when app becomes visible
+// iOS PWA resume
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='visible'&&!fbConnected){fbAutoConnect()}
+  dbg('visibilitychange: '+document.visibilityState);
+  if(document.visibilityState==='visible'){fbReconnect()}
 });
 window.addEventListener('pageshow',function(e){
-  if(!fbConnected){fbAutoConnect()}
+  dbg('pageshow, persisted='+e.persisted);
+  if(e.persisted){fbReconnect()}
 });
-window.addEventListener('focus',function(){
-  if(!fbConnected){fbAutoConnect()}
-});
+// Keepalive every 30s
+setInterval(function(){
+  if(!fbRef||!fbDb){dbg('keepalive: no ref/db');return}
+  try{
+    fbDb.ref('.info/connected').once('value',function(snap){
+      var val=snap.val();
+      dbg('keepalive: .info/connected='+val);
+      if(!val&&fbConnected){fbReconnect()}
+    });
+  }catch(e){dbg('keepalive err: '+e.message);fbReconnect()}
+},30000);
+
 </script>
+<div class="dbg-log" id="dbgLog"><span class="dbg-close" onclick="document.getElementById('dbgLog').style.display='none'">&times;</span>DEBUG LOG\n</div>
 </body>
 </html>
