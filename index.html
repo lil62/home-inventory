@@ -83,7 +83,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 @media(min-width:600px){.sg{grid-template-columns:repeat(4,1fr)}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" onload="setTimeout(function(){if(typeof fbAutoConnect==='function')fbAutoConnect()},1000)"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <header class="hd"><h1>🏠 おうち在庫管理</h1><span class="sync-badge sync-off" id="syncBadge"><i class="fa-solid fa-circle" style="font-size:6px"></i> ローカル</span></header>
@@ -484,16 +484,7 @@ function fbUpdateBadge(){
 }
 
 function fbAutoConnect(){
-  var room='tksm0321';
-  var apiKey='AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o';
-  var dbUrl='https://ouchi-inventory-default-rtdb.firebaseio.com';
-  var r=document.getElementById('fbRoom');
-  var k=document.getElementById('fbKey');
-  var u=document.getElementById('fbUrl');
-  if(r)r.value=room;
-  if(k)k.value=apiKey;
-  if(u)u.value=dbUrl;
-  fbDoConnect(room,apiKey,dbUrl);
+  fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
 }
 
 
@@ -513,8 +504,18 @@ try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().
 
 
 
+fbAutoConnect();
 
-setTimeout(function(){if(typeof firebase!=='undefined'&&!fbConnected&&typeof fbAutoConnect==='function')fbAutoConnect()},3000);
+// iOS PWA resume: reconnect Firebase when app becomes visible
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&!fbConnected){fbAutoConnect()}
+});
+window.addEventListener('pageshow',function(e){
+  if(!fbConnected){fbAutoConnect()}
+});
+window.addEventListener('focus',function(){
+  if(!fbConnected){fbAutoConnect()}
+});
 </script>
 </body>
 </html>
