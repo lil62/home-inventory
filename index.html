@@ -82,6 +82,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .fb-disconnected{background:#f1f3f4;color:#9aa0a6}
 @media(min-width:600px){.sg{grid-template-columns:repeat(4,1fr)}}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <header class="hd"><h1>🏠 おうち在庫管理</h1><span class="sync-badge sync-off" id="syncBadge"><i class="fa-solid fa-circle" style="font-size:6px"></i> ローカル</span></header>
@@ -126,7 +128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 </div>
 <div class="pn" id="p-set">
 <div class="card"><div class="ct"><i class="fa-solid fa-cloud"></i> Firebase接続</div>
-<div id="syncBadge" style="font-size:12px;margin-bottom:10px;color:#9aa0a6">● ローカル</div>
+<div id="syncBadge" style="font-size:12px;margin-bottom:10px;color:#9aa0a6">● 接続中...</div>
 <div class="fg"><label class="fl">共有キー（合言葉）</label><input class="fi" id="fbRoom" placeholder="例: takishima-home"></div>
 <div class="fg"><label class="fl">Firebase apiKey</label><input class="fi" id="fbKey" placeholder="AIzaSy..."></div>
 <div class="fg"><label class="fl">Firebase databaseURL</label><input class="fi" id="fbUrl" placeholder="https://xxx.firebaseio.com"></div>
@@ -422,20 +424,7 @@ R();
 // ===== Firebase Sync =====
 var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
 
-function fbLoadSDK(cb){
-  if(typeof firebase!=='undefined'){cb();return}
-  var s1=document.createElement('script');
-  s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
-  s1.onload=function(){
-    var s2=document.createElement('script');
-    s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
-    s2.onload=cb;
-    s2.onerror=function(){toast('Firebase SDK読み込み失敗')};
-    document.head.appendChild(s2);
-  };
-  s1.onerror=function(){toast('ネットワークエラー')};
-  document.head.appendChild(s1);
-}
+function fbLoadSDK(cb){cb()}
 
 function fbConnect(){
   var room=document.getElementById('fbRoom').value.trim();
@@ -491,25 +480,20 @@ function fbDisconnect(){
 
 function fbUpdateBadge(){
   var el=document.getElementById('syncBadge');
-  if(el){el.textContent=fbConnected?'● 同期中':'● ローカル';el.style.color=fbConnected?'#34a853':'rgba(255,255,255,0.7)'}
+  if(el){el.textContent=fbConnected?'● 同期中':'● 接続中...';el.style.color=fbConnected?'#34a853':'#9aa0a6'}
 }
 
 function fbAutoConnect(){
   var room='tksm0321';
   var apiKey='AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o';
   var dbUrl='https://ouchi-inventory-default-rtdb.firebaseio.com';
-  function tryConnect(){
-    var r=document.getElementById('fbRoom');
-    var k=document.getElementById('fbKey');
-    var u=document.getElementById('fbUrl');
-    if(r)r.value=room;
-    if(k)k.value=apiKey;
-    if(u)u.value=dbUrl;
-    fbLoadSDK(function(){fbDoConnect(room,apiKey,dbUrl)});
-  }
-  setTimeout(tryConnect,800);
-  setTimeout(function(){if(!fbConnected)tryConnect()},4000);
-  setTimeout(function(){if(!fbConnected)tryConnect()},10000);
+  var r=document.getElementById('fbRoom');
+  var k=document.getElementById('fbKey');
+  var u=document.getElementById('fbUrl');
+  if(r)r.value=room;
+  if(k)k.value=apiKey;
+  if(u)u.value=dbUrl;
+  fbDoConnect(room,apiKey,dbUrl);
 }
 
 
