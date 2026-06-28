@@ -188,7 +188,7 @@ function sS(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 // State
 var D=JSON.parse(sG('hi_d')||'{"items":[],"hist":[]}');
 var ac='\u3059\u3079\u3066';
-function sv(){sS('hi_d',JSON.stringify(D));fbPush()}
+function sv(){sS('hi_d',JSON.stringify(D));}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 
 // Categories
@@ -391,199 +391,7 @@ function fbUpdateBadge(){
   }
 }
 
-// Connect to Firebase
-function fbLoadSDK(cb){
-  if(typeof firebase!=='undefined'){cb();return}
-  var s1=document.createElement('script');
-  s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
-  s1.onload=function(){
-    var s2=document.createElement('script');
-    s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
-    s2.onload=cb;
-    s2.onerror=function(){toast('Firebase SDK読み込み失敗');};
-    document.head.appendChild(s2);
-  };
-  s1.onerror=function(){toast('Firebase SDK読み込み失敗');};
-  document.head.appendChild(s1);
-}
-function fbConnect(){
-  var room=document.getElementById('fbRoom').value.trim();
-  var apiKey=document.getElementById('fbKey').value.trim();
-  var dbUrl=document.getElementById('fbUrl').value.trim();
-  if(!room){toast('\u5171\u6709\u30ad\u30fc\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
-  if(!apiKey){toast('apiKey\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
-  if(!dbUrl){toast('databaseURL\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
 
-  // Save config
-  sS('hi_fb_cfg',JSON.stringify({room:room,apiKey:apiKey,dbUrl:dbUrl}));
-
-  try{
-    // Initialize Firebase (delete previous if exists)
-    if(fbApp){
-      try{fbApp.delete()}catch(e){}
-    }
-    if(typeof firebase==="undefined"){toast("Firebase SDK読み込み中...");fbLoadSDK(function(){fbConnect()});return}
-    fbApp=firebase.initializeApp({apiKey:apiKey,databaseURL:dbUrl},'hinv_'+Date.now());
-    fbDb=firebase.database(fbApp);
-    fbRef=fbDb.ref(room);
-
-    // Push local data first
-    fbSyncing=true;
-    fbRef.update({
-      items:D.items,
-      hist:D.hist,
-      lastUpdate:Date.now()
-    }).then(function(){
-      fbSyncing=false;
-      toast('\u540c\u671f\u958b\u59cb \u2713');
-    }).catch(function(err){
-      fbSyncing=false;
-      toast('\u63a5\u7d9a\u30a8\u30e9\u30fc: '+err.message);
-      fbConnected=false;
-      fbUpdateBadge();
-      return;
-    });
-
-    // Listen for changes
-    fbRef.on('value',function(snapshot){
-      if(fbSyncing)return;
-      var data=snapshot.val();
-      if(!data)return;
-      fbMerge(data);
-    });
-
-    fbConnected=true;
-    fbUpdateBadge();
-  }catch(err){
-    toast('\u63a5\u7d9a\u5931\u6557: '+err.message);
-    fbConnected=false;
-    fbUpdateBadge();
-  }
-}
-
-// Disconnect from Firebase
-function fbDisconnect(){
-  if(fbRef){
-    fbRef.off();
-    fbRef=null;
-  }
-  if(fbApp){
-    try{fbApp.delete()}catch(e){}
-    fbApp=null;
-  }
-  fbDb=null;
-  fbConnected=false;
-  fbUpdateBadge();
-  toast('\u5207\u65ad\u3057\u307e\u3057\u305f');
-}
-
-// Push local data to Firebase
-function fbPush(){
-  if(!fbConnected||!fbRef||fbSyncing)return;
-  fbSyncing=true;
-  fbRef.update({
-    items:D.items,
-    hist:D.hist,
-    lastUpdate:Date.now()
-  }).then(function(){
-    fbSyncing=false;
-  }).catch(function(){
-    fbSyncing=false;
-  });
-}
-
-// Merge remote data with local (timestamp-based conflict resolution)
-function fbMerge(remote){
-  if(!remote)return;
-  var remoteItems=remote.items||[];
-  var remoteHist=remote.hist||[];
-  var changed=false;
-
-  // Build map of local items by id
-  var localMap={};
-  D.items.forEach(function(it){localMap[it.id]=it});
-
-  // Build map of remote items by id
-  var remoteMap={};
-  remoteItems.forEach(function(it){remoteMap[it.id]=it});
-
-  // Merge items: timestamp-based conflict resolution
-  var mergedItems=[];
-  var allIds={};
-
-  // Process all local items
-  D.items.forEach(function(it){allIds[it.id]=true});
-  // Process all remote items
-  remoteItems.forEach(function(it){allIds[it.id]=true});
-
-  var ids=Object.keys(allIds);
-  for(var i=0;i<ids.length;i++){
-    var id=ids[i];
-    var loc=localMap[id];
-    var rem=remoteMap[id];
-    if(loc&&rem){
-      // Both exist: use the one with newer timestamp
-      var locUp=loc.up||new Date(loc.cr||0).getTime();
-      var remUp=rem.up||new Date(rem.cr||0).getTime();
-      if(remUp>locUp){
-        mergedItems.push(rem);
-        changed=true;
-      }else{
-        mergedItems.push(loc);
-      }
-    }else if(loc&&!rem){
-      // Only local: keep if local is newer than remote lastUpdate
-      var locUp2=loc.up||new Date(loc.cr||0).getTime();
-      if(remote.lastUpdate&&locUp2<remote.lastUpdate){
-        // Item was deleted remotely
-        changed=true;
-      }else{
-        mergedItems.push(loc);
-      }
-    }else if(!loc&&rem){
-      // Only remote: add to local
-      mergedItems.push(rem);
-      changed=true;
-    }
-  }
-
-  // Merge history: combine and deduplicate by timestamp, keep latest 200
-  var histMap={};
-  D.hist.forEach(function(h){histMap[h.d+'_'+h.n+'_'+h.t]=h});
-  remoteHist.forEach(function(h){
-    var key=h.d+'_'+h.n+'_'+h.t;
-    if(!histMap[key]){histMap[key]=h;changed=true}
-  });
-  var mergedHist=Object.keys(histMap).map(function(k){return histMap[k]});
-  mergedHist.sort(function(a,b){return new Date(b.d)-new Date(a.d)});
-  if(mergedHist.length>200)mergedHist.length=200;
-
-  if(changed){
-    D.items=mergedItems;
-    D.hist=mergedHist;
-    sS('hi_d',JSON.stringify(D));
-    R();
-    toast('\ud83d\udd04 \u540c\u671f\u53d7\u4fe1');
-  }
-}
-
-// Auto-connect on load if config saved
-function fbAutoConnect(){
-  var cfg=JSON.parse(sG('hi_fb_cfg')||'{}');
-  if(cfg.room&&cfg.apiKey&&cfg.dbUrl){
-    // Populate form values
-    var roomEl=document.getElementById('fbRoom');
-    var keyEl=document.getElementById('fbKey');
-    var urlEl=document.getElementById('fbUrl');
-    if(roomEl)roomEl.value=cfg.room;
-    if(keyEl)keyEl.value=cfg.apiKey;
-    if(urlEl)urlEl.value=cfg.dbUrl;
-    // Auto connect
-    fbConnect();
-  }
-}
-
-// Init
 if(!D.items.length&&!sG('hi_ok')){
   [{name:'\u725b\u4e73',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u672c',pr:198,al:1,cy:4,me:''},{name:'\u5375 10\u500b\u30d1\u30c3\u30af',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u30d1\u30c3\u30af',pr:298,al:1,cy:7,me:''},{name:'\u30c8\u30a4\u30ec\u30c3\u30c8\u30da\u30fc\u30d1\u30fc',cat:'\u30c8\u30a4\u30ec',qty:8,un:'\u30ed\u30fc\u30eb',pr:498,al:3,cy:14,me:'\u30c0\u30d6\u30eb'},{name:'\u98df\u5668\u7528\u6d17\u5264',cat:'\u30ad\u30c3\u30c1\u30f3',qty:1,un:'\u672c',pr:178,al:1,cy:30,me:'\u30ad\u30e5\u30ad\u30e5\u30c3\u30c8'},{name:'\u30b7\u30e3\u30f3\u30d7\u30fc',cat:'\u6d17\u9762\u6240',qty:1,un:'\u672c',pr:548,al:1,cy:45,me:''},{name:'\u30e9\u30c3\u30d7 30cm',cat:'\u30ad\u30c3\u30c1\u30f3',qty:2,un:'\u672c',pr:148,al:1,cy:30,me:'\u30b5\u30e9\u30f3\u30e9\u30c3\u30d7'}].forEach(function(s){D.items.push({id:uid(),name:s.name,cat:s.cat,qty:s.qty,un:s.un,pr:s.pr,al:s.al,cy:s.cy,me:s.me,cr:new Date().toISOString(),up:Date.now()})});
   sS('hi_ok','1');sv();
@@ -591,8 +399,7 @@ if(!D.items.length&&!sG('hi_ok')){
 R();
 // Service Worker
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});}catch(e){}
-// Firebase auto-connect
-fbAutoConnect();
+
 
 
 </script>
