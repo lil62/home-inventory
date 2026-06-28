@@ -514,11 +514,10 @@ function forceUpdate(){
       regs.forEach(function(r){r.unregister()});
     });
   }
-  if('caches' in self){
+  if('caches' in window){
     caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k)})});
   }
-  toast('更新中...');
-  setTimeout(function(){location.reload(true)},1000);
+  toast('更新完了！アプリを閉じて開き直してください');
 }
 
 try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()});});navigator.serviceWorker.register('./sw.js?v=3').catch(function(){});}}catch(e){}
