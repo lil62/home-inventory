@@ -290,7 +290,7 @@ function openD(id){
   document.getElementById('shB').innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><div class="icn" style="background:'+c.b+';width:48px;height:48px;font-size:24px">'+c.i+'</div><div><div style="font-size:17px;font-weight:600">'+it.name+'</div><div style="font-size:12px;color:#9aa0a6">'+it.cat+(it.me?' \u00b7 '+it.me:'')+'</div></div></div>'
   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px"><div><b>\u6570\u91cf:</b> '+it.qty+' '+it.un+'</div><div><b>\u4fa1\u683c:</b> '+(it.pr?'\u00a5'+it.pr.toLocaleString():'-')+'</div><div><b>\u6d88\u8cbb\u901f\u5ea6:</b> '+rTxt+'</div><div><b>\u4e88\u6e2c:</b> '+dTxt+'</div></div>'
   +'<div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-sm bs" style="flex:1" onclick="adj(\''+id+'\',-1)"><i class="fa-solid fa-minus"></i> \u4f7f\u3063\u305f</button><button class="btn btn-sm bp" style="flex:1" onclick="adj(\''+id+'\',1)"><i class="fa-solid fa-plus"></i> \u88dc\u5145</button></div>'
-  +'<div class="fr" style="margin-bottom:16px"><div class="fg"><label class="fl">\u6570\u91cf\u5909\u66f4</label><input class="fi" type="number" id="eQ" value="'+it.qty+'" min="0"></div><div class="fg" style="display:flex;align-items:flex-end"><button class="btn btn-sm bs" onclick="setQ(\''+id+'\')">\u66f4\u65b0</button></div></div>'
+  +'<div class="fr" style="margin-bottom:16px"><div class="fg"><label class="fl">\u6570\u91cf\u5909\u66f4</label><input class="fi" type="number" id="eQ" value="'+it.qty+'" min="0"></div><div class="fg"><label class="fl">価格(円)</label><input class="fi" type="number" id="eP" value="'+(it.pr||0)+'" min="0"></div></div><div style="margin-bottom:16px"><button class="btn btn-sm bs" onclick="setQP(\''+id+'\')">更新</button></div>'
   +'<button class="btn bd" onclick="askDel(\''+id+'\')"><i class="fa-solid fa-trash-can"></i> \u524a\u9664</button>';
   document.getElementById('sheet').classList.add('open');
 }
@@ -307,6 +307,14 @@ function setQ(id){
   var df=nq-it.qty;it.qty=nq;it.up=Date.now();
   if(df>0)aH('buy',it.name,df,it.un);else if(df<0)aH('use',it.name,Math.abs(df),it.un);
   sv();toast('\u66f4\u65b0');openD(id);R();
+}
+function setQP(id){
+  var it=D.items.find(function(x){return x.id===id});if(!it)return;
+  var nq=parseFloat(document.getElementById('eQ').value)||0;
+  var np=parseFloat(document.getElementById('eP').value)||0;
+  var df=nq-it.qty;it.qty=nq;it.pr=np;
+  if(df>0)aH('buy',it.name,df,it.un);else if(df<0)aH('use',it.name,Math.abs(df),it.un);
+  sv();toast('更新');openD(id);R();
 }
 
 // Confirm dialog
