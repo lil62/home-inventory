@@ -919,12 +919,9 @@ function renderOCRResults(items) {
  * HTML属性用エスケープ
  */
 function _escAttr(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(str)));
+  return d.innerHTML;
 }
 
 
