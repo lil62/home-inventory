@@ -498,7 +498,7 @@ function fbAutoConnect(){
   var room='tksm0321';
   var apiKey='AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o';
   var dbUrl='https://ouchi-inventory-default-rtdb.firebaseio.com';
-  setTimeout(function(){
+  function tryConnect(){
     var r=document.getElementById('fbRoom');
     var k=document.getElementById('fbKey');
     var u=document.getElementById('fbUrl');
@@ -506,7 +506,10 @@ function fbAutoConnect(){
     if(k)k.value=apiKey;
     if(u)u.value=dbUrl;
     fbLoadSDK(function(){fbDoConnect(room,apiKey,dbUrl)});
-  },500);
+  }
+  setTimeout(tryConnect,800);
+  setTimeout(function(){if(!fbConnected)tryConnect()},4000);
+  setTimeout(function(){if(!fbConnected)tryConnect()},10000);
 }
 
 
