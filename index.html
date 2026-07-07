@@ -6,9 +6,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a73e8">
 <title>おうち在庫管理</title>
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -620,13 +617,9 @@ function onImg(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.
 function toast(m){var el=document.getElementById('tst');el.textContent=m;el.style.display='block';setTimeout(function(){el.style.display='none'},2200)}
 
 // ===== Firebase =====
-if(!D.items.length){
-  [{name:'\u725b\u4e73',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u672c',pr:198,al:1,cy:4,me:''},{name:'\u5375 10\u500b\u30d1\u30c3\u30af',cat:'\u51b7\u8535\u5eab',qty:1,un:'\u30d1\u30c3\u30af',pr:298,al:1,cy:7,me:''},{name:'\u30c8\u30a4\u30ec\u30c3\u30c8\u30da\u30fc\u30d1\u30fc',cat:'\u30c8\u30a4\u30ec',qty:8,un:'\u30ed\u30fc\u30eb',pr:498,al:3,cy:14,me:'\u30c0\u30d6\u30eb'},{name:'\u98df\u5668\u7528\u6d17\u5264',cat:'\u30ad\u30c3\u30c1\u30f3',qty:1,un:'\u672c',pr:178,al:1,cy:30,me:'\u30ad\u30e5\u30ad\u30e5\u30c3\u30c8'},{name:'\u30b7\u30e3\u30f3\u30d7\u30fc',cat:'\u6d17\u9762\u6240',qty:1,un:'\u672c',pr:548,al:1,cy:45,me:''},{name:'\u30e9\u30c3\u30d7 30cm',cat:'\u30ad\u30c3\u30c1\u30f3',qty:2,un:'\u672c',pr:148,al:1,cy:30,me:'\u30b5\u30e9\u30f3\u30e9\u30c3\u30d7'}].forEach(function(s){D.items.push({id:uid(),name:s.name,cat:s.cat,qty:s.qty,un:s.un,pr:s.pr,al:s.al,cy:s.cy,me:s.me,cr:new Date().toISOString(),up:Date.now()})});
-  sS('hi_ok','1');sv();
-}
 R();
 
-var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false;
+var fbApp=null,fbDb=null,fbRef=null,fbConnected=false,fbSyncing=false,fbReady=false,fbReconnecting=false,fbRetried=false;
 function fbUpdateBadge(){
   var el=document.getElementById('syncBadge');
   if(!el)return;
@@ -672,12 +665,20 @@ function fbDoConnect(room,apiKey,dbUrl){
     fbRef.on('value',function(snap){
       if(fbSyncing)return;
       var remote=snap.val();
-      if(remote&&remote.items){
-        D.items=remote.items;
-        D.hist=remote.hist||[];
+      fbReady=true;
+      if(remote===null){
+        // Firebaseが空の初回接続時のみseedを投入
+        [{name:'牛乳',cat:'冷蔵庫',qty:1,un:'本',pr:198,al:1,cy:4,me:''},{name:'卵 10個パック',cat:'冷蔵庫',qty:1,un:'パック',pr:298,al:1,cy:7,me:''},{name:'トイレットペーパー',cat:'トイレ',qty:8,un:'ロール',pr:498,al:3,cy:14,me:'ダブル'},{name:'食器用洗剤',cat:'キッチン',qty:1,un:'本',pr:178,al:1,cy:30,me:'キュキュット'},{name:'シャンプー',cat:'洗面所',qty:1,un:'本',pr:548,al:1,cy:45,me:''},{name:'ラップ 30cm',cat:'キッチン',qty:2,un:'本',pr:148,al:1,cy:30,me:'サランラップ'}].forEach(function(s){D.items.push({id:uid(),name:s.name,cat:s.cat,qty:s.qty,un:s.un,pr:s.pr,al:s.al,cy:s.cy,me:s.me,cr:new Date().toISOString(),up:Date.now()})});
         sS('hi_d',JSON.stringify(D));
+        fbPush();
         R();
+        return;
       }
+      // リモートを正としてローカルを上書き（削除・変更を確実に反映）
+      D.items=remote.items||[];
+      D.hist=remote.hist||[];
+      sS('hi_d',JSON.stringify(D));
+      R();
     },function(err){
       fbConnected=false;
       fbUpdateBadge();
@@ -685,32 +686,44 @@ function fbDoConnect(room,apiKey,dbUrl){
     fbConnected=true;
     fbSyncing=false;
     fbUpdateBadge();
-    fbPush();
   }catch(e){
     fbConnected=false;
     fbUpdateBadge();
   }
 }
 function fbPush(){
-  if(!fbConnected||!fbRef||fbSyncing)return;
+  if(!fbConnected||!fbRef||fbSyncing||!fbReady)return;
   fbSyncing=true;
   fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(err){
     fbSyncing=false;
+    if(err){
+      if(!fbRetried){
+        fbRetried=true;
+        toast('同期に失敗しました。再試行します');
+        setTimeout(function(){fbPush();},2000);
+      }else{
+        toast('同期に失敗しました。後で自動再接続されます');
+      }
+    }else{
+      fbRetried=false;
+    }
   });
 }
 function fbDisconnect(){
   if(fbRef){try{fbRef.off()}catch(e){}}
   if(fbApp){try{fbApp.delete()}catch(e){}}
-  fbApp=null;fbDb=null;fbRef=null;fbConnected=false;
+  fbApp=null;fbDb=null;fbRef=null;fbConnected=false;fbReady=false;
   fbUpdateBadge();
   toast('\u5207\u65ad\u3057\u307e\u3057\u305f');
 }
 function fbReconnect(){
-  fbConnected=false;
+  if(fbReconnecting)return;
+  fbReconnecting=true;
+  fbConnected=false;fbReady=false;
   if(fbRef){try{fbRef.off()}catch(e){}}
   if(fbApp){try{fbApp.delete()}catch(e){}}
   fbApp=null;fbDb=null;fbRef=null;
-  fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
+  try{fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');}finally{fbReconnecting=false;}
 }
 function fbAutoConnect(){
   fbDoConnect('tksm0321','AIzaSyAwayfQPc1YJknzaP0RGlIYMeZJrjco57o','https://ouchi-inventory-default-rtdb.firebaseio.com');
