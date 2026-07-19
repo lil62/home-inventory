@@ -193,8 +193,8 @@ body.dark .b-pr{background:#3d1a1a;color:#ef5350}
 <div id="imgPrev" style="display:none;margin-top:12px"><img id="prevImg" style="width:100%;border-radius:10px"></div>
 </div>
 <div class="card"><div class="ct"><i class="fa-solid fa-keyboard"></i> テキスト一括登録</div>
-<p style="font-size:12px;color:#5f6368;margin-bottom:10px">1行1アイテム：商品名, 数量, 価格</p>
-<textarea class="fi" id="bulk" rows="4" placeholder="牛乳, 1, 198&#10;卵10個, 1, 298&#10;トイレットペーパー, 1, 498"></textarea>
+<p style="font-size:12px;color:#5f6368;margin-bottom:10px">1行1アイテム：商品名, 数量, 価格, カテゴリ, 単位<br><span style="font-size:11px;color:#9aa0a6">※カテゴリ・単位は省略可（自動判定）</span></p>
+<textarea class="fi" id="bulk" rows="4" placeholder="牛乳, 1, 198, 冷蔵庫, 本&#10;卵10個パック, 1, 298&#10;トイレットペーパー, 8, 498, トイレ, ロール"></textarea>
 <button class="btn bs" style="margin-top:8px" onclick="bulkAdd()"><i class="fa-solid fa-list-check"></i> 一括登録</button>
 </div></div>
 <div class="pn" id="p-stats">
@@ -274,16 +274,43 @@ function sG(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function sS(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
 // State
-var D=JSON.parse(sG('hi_d')||'{"items":[],"hist":[]}');
+var D=JSON.parse(sG('hi_d')||'{"items":[],"hist":[],"wishlist":[]}');
+if(!D.wishlist)D.wishlist=[];
 var ac='\u3059\u3079\u3066';
 var sortMode=sG('hi_sort')||'status';
 function sv(){sS('hi_d',JSON.stringify(D));fbPush()}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // Categories
 var CA={'\u51b7\u8535\u5eab':{i:'\ud83e\uddca',b:'#e3f2fd'},'\u51b7\u51cd\u5eab':{i:'\u2744\ufe0f',b:'#e8eaf6'},'\u98df\u54c1\u68da':{i:'\ud83e\udd6b',b:'#fff3e0'},'\u98f2\u6599':{i:'\ud83e\udd64',b:'#e8f5e9'},'\u6d17\u9762\u6240':{i:'\ud83e\udea5',b:'#fce4ec'},'\u30c8\u30a4\u30ec':{i:'\ud83d\udebd',b:'#f3e5f5'},'\u30ad\u30c3\u30c1\u30f3':{i:'\ud83c\udf73',b:'#fffde7'},'\u6383\u9664':{i:'\ud83e\uddf9',b:'#e0f7fa'},'\u305d\u306e\u4ed6':{i:'\ud83d\udce6',b:'#f5f5f5'}};
 function ci(c){return CA[c]||CA['\u305d\u306e\u4ed6']}
 function st(it){return it.qty<=0?'out':it.qty<=(it.al||1)?'low':'ok'}
+
+// Auto-detect category from product name
+function guessCategory(name){
+  var n=String(name||'').normalize('NFKC').toLowerCase();
+  // Exclusions: compound words that match wrong short keywords
+  var excl=[{word:'化粧水',cat:'洗面所'},{word:'アイスコーヒー',cat:'飲料'},{word:'アイスティー',cat:'飲料'},{word:'トイレ用洗剤',cat:'トイレ'},{word:'牛乳パック',cat:'冷蔵庫'}];
+  for(var e=0;e<excl.length;e++){if(n.indexOf(excl[e].word)!==-1)return excl[e].cat;}
+  var map=[
+    {keys:['牛乳','ヨーグルト','チーズ','バター','豆腐','納豆','ハム','ベーコン','ソーセージ','卵','たまご','玉子','マーガリン','生クリーム','味噌','漬物','キムチ','もやし'],cat:'冷蔵庫'},
+    {keys:['冷凍','アイス','氷','ピザ','餃子','フライ','冷食'],cat:'冷凍庫'},
+    {keys:['米','パスタ','うどん','そば','ラーメン','カップ麺','缶詰','レトルト','カレー','ふりかけ','醤油','みりん','酢','油','塩','砂糖','小麦粉','片栗粉','パン粉','海苔','だし','コンソメ','ケチャップ','マヨネーズ','ソース','ドレッシング','スパイス','調味料','のり','乾麺','乾物','お菓子','チョコ','せんべい','クッキー','スナック','飴','ガム','グミ','パン','食パン','シリアル'],cat:'食品棚'},
+    {keys:['水','ジュース','お茶','コーヒー','紅茶','ビール','酒','ワイン','炭酸','牛乳パック','豆乳','ミルク','飲料'],cat:'飲料'},
+    {keys:['歯ブラシ','歯磨き','シャンプー','リンス','コンディショナー','ボディソープ','石鹸','洗顔','化粧水','乳液','カミソリ','髭剃り','ヘアワックス','デオドラント','綿棒','コットン','入浴剤','ハンドソープ','ボディクリーム'],cat:'洗面所'},
+    {keys:['トイレットペーパー','トイレ','便座','芳香剤','消臭'],cat:'トイレ'},
+    {keys:['洗剤','食器','スポンジ','ラップ','アルミホイル','キッチンペーパー','ジップロック','ゴミ袋','ポリ袋','漂白','クレンザー','食洗機','重曹','クエン酸'],cat:'キッチン'},
+    {keys:['掃除','モップ','ぞうきん','クイックルワイパー','粘着','コロコロ','フロア','床'],cat:'掃除'}
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var j=0;j<map[i].keys.length;j++){
+      if(n.indexOf(map[i].keys[j])!==-1)return map[i].cat;
+    }
+  }
+  return 'その他';
+}
+
 
 // Consumption analysis
 function cRate(it){
@@ -388,7 +415,7 @@ function R(){
     var bt=s==='ok'?'\u5728\u5eab\u3042\u308a':s==='low'?'\u6b8b\u5c11':'\u5207\u308c';
     var dl=dLeft(x),dlb='';
     if(dl!==null&&dl<=7)dlb=' <span class="badge b-pr">\u23f3'+dl+'\u65e5</span>';
-    return '<div class="swipe-wrap" data-id="'+x.id+'"><div class="swipe-bg swipe-bg-right"><i class="fa-solid fa-plus"></i> \u88dc\u5145</div><div class="swipe-bg swipe-bg-left"><i class="fa-solid fa-minus"></i> \u4f7f\u3063\u305f</div><div class="swipe-inner"><div class="ic" onclick="openD(\''+x.id+'\')"><div class="icn" style="background:'+c.b+'">'+c.i+'</div><div class="ii"><div class="in">'+x.name+'</div><div class="im"><span class="badge '+bc+'">'+bt+'</span>'+dlb+(x.pr?'\u00a5'+x.pr.toLocaleString():'')+(x.me?' \u00b7 '+x.me:'')+'</div></div><div class="iq"><div class="iqn">'+x.qty+'</div><div class="iqu">'+x.un+'</div></div></div></div></div>';
+    return '<div class="swipe-wrap" data-id="'+x.id+'"><div class="swipe-bg swipe-bg-right"><i class="fa-solid fa-plus"></i> \u88dc\u5145</div><div class="swipe-bg swipe-bg-left"><i class="fa-solid fa-minus"></i> \u4f7f\u3063\u305f</div><div class="swipe-inner"><div class="ic" onclick="openD(\''+x.id+'\')"><div class="icn" style="background:'+c.b+'">'+c.i+'</div><div class="ii"><div class="in">'+esc(x.name)+'</div><div class="im"><span class="badge '+bc+'">'+bt+'</span>'+dlb+(x.pr?'\u00a5'+x.pr.toLocaleString():'')+(x.me?' \u00b7 '+x.me:'')+'</div></div><div class="iq"><div class="iqn">'+x.qty+'</div><div class="iqu">'+x.un+'</div></div></div></div></div>';
   }).join('');
   initSwipe();
 }
@@ -464,7 +491,14 @@ function bulkAdd(){
   var t=document.getElementById('bulk').value.trim();if(!t){toast('\u30c6\u30ad\u30b9\u30c8\u3092\u5165\u529b');return}
   var n=0;t.split('\n').forEach(function(ln){
     var p=ln.split(/[,\u3001\t]/).map(function(s){return s.trim()});
-    if(p[0]){D.items.push({id:uid(),name:p[0],cat:'\u305d\u306e\u4ed6',qty:parseFloat(p[1])||1,un:'\u500b',pr:parseFloat(p[2])||0,al:1,cy:0,me:'',cr:new Date().toISOString(),up:Date.now()});n++}
+    if(p[0]){
+      var catVal=p[3]||'';
+      var unVal=p[4]||'';
+      if(!catVal)catVal=guessCategory(p[0]);
+      if(!unVal)unVal='\u500b';
+      if(!CA[catVal])catVal='\u305d\u306e\u4ed6';
+      D.items.push({id:uid(),name:p[0],cat:catVal,qty:parseFloat(p[1])||1,un:unVal,pr:parseFloat(p[2])||0,al:1,cy:0,me:'',cr:new Date().toISOString(),up:Date.now()});n++;
+    }
   });
   sv();document.getElementById('bulk').value='';toast(n+'\u4ef6\u767b\u9332');
 }
@@ -540,6 +574,30 @@ function resetShopChecked(){
   toast('\u30c1\u30a7\u30c3\u30af\u30ea\u30bb\u30c3\u30c8');
 }
 
+
+// Wishlist (manual shopping list items)
+function addWish(){
+  var input=document.getElementById('wishInput');
+  var name=input.value.trim();
+  if(!name){toast('\u5546\u54c1\u540d\u3092\u5165\u529b');return}
+  D.wishlist.push({id:uid(),name:name,done:false});
+  sv();input.value='';rSt();toast(name+' \u3092\u8ffd\u52a0');
+}
+function toggleWish(id){
+  var w=D.wishlist.find(function(x){return x.id===id});
+  if(!w)return;
+  w.done=!w.done;
+  sv();rSt();
+}
+function removeWish(id){
+  D.wishlist=D.wishlist.filter(function(x){return x.id!==id});
+  sv();rSt();toast('\u524a\u9664\u3057\u307e\u3057\u305f');
+}
+function clearDoneWish(){
+  D.wishlist=D.wishlist.filter(function(x){return !x.done});
+  sv();rSt();toast('\u5b8c\u4e86\u6e08\u307f\u3092\u524a\u9664');
+}
+
 // Stats
 function rSt(){
   var tot=D.items.length,lo=0,ou=0,val=0;
@@ -550,29 +608,45 @@ function rSt(){
   var maxR=rates.length?rates[0].r:1;
   document.getElementById('topC').innerHTML=rates.length?rates.map(function(x){
     var pct=Math.round(x.r/maxR*100);
-    return '<div class="sr"><span>'+ci(x.cat).i+'</span><span style="flex-shrink:0;width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x.name+'</span><div class="srb"><div class="srbf" style="width:'+pct+'%;background:#1a73e8"></div></div><span style="flex-shrink:0;font-weight:500">'+(x.r*7).toFixed(1)+'/\u9031</span></div>';
+    return '<div class="sr"><span>'+ci(x.cat).i+'</span><span style="flex-shrink:0;width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.name)+'</span><div class="srb"><div class="srbf" style="width:'+pct+'%;background:#1a73e8"></div></div><span style="flex-shrink:0;font-weight:500">'+(x.r*7).toFixed(1)+'/\u9031</span></div>';
   }).join(''):'<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\u30c7\u30fc\u30bf\u84c4\u7a4d\u4e2d</div>';
   // Monthly spend estimate
   var spends=D.items.map(function(x){var r=cRate(x);return{name:x.name,cat:x.cat,ms:r>0?r*30*x.pr:0}}).filter(function(x){return x.ms>0}).sort(function(a,b){return b.ms-a.ms}).slice(0,8);
   var totalMs=spends.reduce(function(s,x){return s+x.ms},0);
   document.getElementById('monS').innerHTML=spends.length?('<div style="font-size:18px;font-weight:700;color:#1a73e8;margin-bottom:12px">\u6708\u9593\u63a8\u8a08: \u00a5'+Math.round(totalMs).toLocaleString()+'</div>'+spends.map(function(x){return '<div class="sr"><span>'+ci(x.cat).i+'</span><span style="flex:1">'+x.name+'</span><span style="font-weight:500">\u00a5'+Math.round(x.ms).toLocaleString()+'</span></div>'}).join('')):'<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\u6d88\u8cbb\u30c7\u30fc\u30bf\u84c4\u7a4d\u4e2d</div>';
 
-  // Shopping list with checkboxes
+  // Shopping list with checkboxes + wishlist
   var low2=D.items.filter(function(x){return st(x)!=='ok'});
   var predicted2=D.items.filter(function(x){if(st(x)!=='ok')return false;var dl2=dLeft(x);return dl2!==null&&dl2<=3});
   var all2=low2.concat(predicted2);
   var checked=getShopChecked();
   var shopHtml='';
+  // Manual wishlist input
+  shopHtml+='<div id="wishToggleWrap"><button class="btn btn-sm bs" onclick="document.getElementById(\'wishFormWrap\').style.display=\'flex\';document.getElementById(\'wishToggleWrap\').style.display=\'none\';document.getElementById(\'wishInput\').focus()" style="margin-bottom:12px;width:auto"><i class="fa-solid fa-plus"></i> \u8cb7\u3044\u305f\u3044\u3082\u306e\u3092\u8ffd\u52a0</button></div><div id="wishFormWrap" style="display:none;gap:8px;margin-bottom:12px"><input class="fi" id="wishInput" placeholder="\u4f8b: \u5375, \u7261\u4e39\u934b\u306e\u7d20" style="flex:1" onkeydown="if(event.key===\'Enter\')addWish()"><button class="btn btn-sm bp" onclick="addWish()"><i class="fa-solid fa-plus"></i></button><button class="btn btn-sm bs" onclick="document.getElementById(\'wishFormWrap\').style.display=\'none\';document.getElementById(\'wishToggleWrap\').style.display=\'block\'" aria-label="閉じる"><i class="fa-solid fa-xmark"></i></button></div>';
+  // Wishlist items
+  if(D.wishlist&&D.wishlist.length){
+    shopHtml+='<div style="font-size:11px;color:#9aa0a6;margin-bottom:4px;font-weight:500">\ud83d\udcdd \u8cb7\u3044\u305f\u3044\u3082\u306e</div>';
+    shopHtml+=D.wishlist.map(function(w){
+      return '<div class="shop-item'+(w.done?' checked':'')+'"><div class="shop-cb'+(w.done?' on':'')+'" onclick="toggleWish(\''+w.id+'\')"><i class="fa-solid fa-check" style="display:'+(w.done?'block':'none')+'"></i></div><span class="shop-name">'+esc(w.name)+'</span><button style="background:none;border:none;color:#ea4335;font-size:14px;padding:4px 8px;cursor:pointer" onclick="removeWish(\''+w.id+'\')"><i class="fa-solid fa-xmark"></i></button></div>';
+    }).join('');
+    var doneCount=D.wishlist.filter(function(w){return w.done}).length;
+    if(doneCount>0){
+      shopHtml+='<button class="shop-reset" onclick="clearDoneWish()" style="margin-bottom:12px"><i class="fa-solid fa-broom"></i> \u5b8c\u4e86\u6e08\u307f\u3092\u524a\u9664</button>';
+    }
+  }
+  // Auto-detected items
   if(all2.length){
-    shopHtml=all2.map(function(x){
+    shopHtml+='<div style="font-size:11px;color:#9aa0a6;margin-bottom:4px;margin-top:8px;font-weight:500">\u26a0\ufe0f \u5728\u5eab\u5c11 / \u5207\u308c</div>';
+    shopHtml+=all2.map(function(x){
       var isChecked=!!checked[x.name];
       var dl2=dLeft(x);
       var safeName=x.name.replace(/'/g,"\\'"  );
-      return '<div class="shop-item'+(isChecked?' checked':'')+'"><div class="shop-cb'+(isChecked?' on':'')+'" onclick="toggleShopItem(\''+safeName+'\')"><i class="fa-solid fa-check" style="display:'+(isChecked?'block':'none')+'"></i></div><span class="shop-name">'+ci(x.cat).i+' '+x.name+'</span><span style="color:#9aa0a6;font-size:11px">'+x.qty+x.un+'</span>'+(dl2!==null&&dl2<=3?'<span class="badge b-pr">\u23f3'+dl2+'\u65e5</span>':'')+(x.pr?'<span style="color:#1a73e8;font-size:12px">\u00a5'+x.pr.toLocaleString()+'</span>':'')+'</div>';
+      return '<div class="shop-item'+(isChecked?' checked':'')+'"><div class="shop-cb'+(isChecked?' on':'')+'" onclick="toggleShopItem(\''+safeName+'\')"><i class="fa-solid fa-check" style="display:'+(isChecked?'block':'none')+'"></i></div><span class="shop-name">'+ci(x.cat).i+' '+esc(x.name)+'</span><span style="color:#9aa0a6;font-size:11px">'+x.qty+esc(x.un)+'</span>'+(dl2!==null&&dl2<=3?'<span class="badge b-pr">\u23f3'+dl2+'\u65e5</span>':'')+(x.pr?'<span style="color:#1a73e8;font-size:12px">\u00a5'+x.pr.toLocaleString()+'</span>':'')+'</div>';
     }).join('');
     shopHtml+='<button class="shop-reset" onclick="resetShopChecked()"><i class="fa-solid fa-rotate-left"></i> \u30c1\u30a7\u30c3\u30af\u30ea\u30bb\u30c3\u30c8</button>';
-  }else{
-    shopHtml='<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\ud83c\udf89 \u5728\u5eabOK</div>';
+  }
+  if(!all2.length&&(!D.wishlist||!D.wishlist.length)){
+    shopHtml+='<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\ud83c\udf89 \u5728\u5eabOK</div>';
   }
   document.getElementById('shop').innerHTML=shopHtml;
 
@@ -597,7 +671,7 @@ function rSt(){
 
   // History
   var rh=D.hist.slice(0,20);
-  document.getElementById('hList').innerHTML=rh.length?rh.map(function(h){var d=new Date(h.d);return '<div class="hi"><div class="hd2 '+(h.t==='buy'?'hb':'hu')+'"><i class="fa-solid '+(h.t==='buy'?'fa-cart-plus':'fa-hand-holding')+'"></i></div><div style="flex:1"><div style="font-weight:500">'+h.n+'</div><div style="font-size:11px;color:#9aa0a6">'+(d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</div></div><div style="font-weight:500;color:'+(h.t==='buy'?'#34a853':'#ea4335')+'">'+(h.t==='buy'?'+':'-')+h.q+' '+h.u+'</div></div>'}).join(''):'<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\u5c65\u6b74\u306a\u3057</div>';
+  document.getElementById('hList').innerHTML=rh.length?rh.map(function(h){var d=new Date(h.d);return '<div class="hi"><div class="hd2 '+(h.t==='buy'?'hb':'hu')+'"><i class="fa-solid '+(h.t==='buy'?'fa-cart-plus':'fa-hand-holding')+'"></i></div><div style="flex:1"><div style="font-weight:500">'+esc(h.n)+'</div><div style="font-size:11px;color:#9aa0a6">'+(d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</div></div><div style="font-weight:500;color:'+(h.t==='buy'?'#34a853':'#ea4335')+'">'+(h.t==='buy'?'+':'-')+h.q+' '+h.u+'</div></div>'}).join(''):'<div style="text-align:center;padding:12px;font-size:13px;color:#9aa0a6">\u5c65\u6b74\u306a\u3057</div>';
 }
 
 // Export/Import
@@ -680,6 +754,7 @@ function fbDoConnect(room,apiKey,dbUrl){
       // リモートを正としてローカルを上書き（削除・変更を確実に反映）
       D.items=remote.items||[];
       D.hist=remote.hist||[];
+      D.wishlist=remote.wishlist||[];
       sS('hi_d',JSON.stringify(D));
       R();
     },function(err){
@@ -697,7 +772,7 @@ function fbDoConnect(room,apiKey,dbUrl){
 function fbPush(){
   if(!fbConnected||!fbRef||fbSyncing||!fbReady)return;
   fbSyncing=true;
-  fbRef.set({items:D.items,hist:D.hist,updated:new Date().toISOString()},function(err){
+  fbRef.set({items:D.items,hist:D.hist,wishlist:D.wishlist||[],updated:new Date().toISOString()},function(err){
     fbSyncing=false;
     if(err){
       if(!fbRetried){
